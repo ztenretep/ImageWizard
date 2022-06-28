@@ -9,6 +9,11 @@ applied wave.
 
 The user has to change the constant FN_IN to the image the filter should be
 applied. The filter then is applied to this image.
+
+For the functionality of the script, the Python modules opencv and numpy must
+be installed.
+
+The script was tested with JPEG and PNG images so far.
 '''
 # pylint: disable=invalid-name
 # pylint: disable=c-extension-no-member
