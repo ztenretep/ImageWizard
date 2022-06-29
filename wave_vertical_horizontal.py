@@ -10,11 +10,10 @@ applied wave.
 The user has to change the constant FN_IN to the image the filter should be
 applied. The filter then is applied to this image.
 '''
-# pylint: disable=invalid-name
 # pylint: disable=c-extension-no-member
-# pylint: disable=broad-except
-# pylint: disable=too-many-function-args
+# pylint: disable=invalid-name
 # pylint: disable=too-many-locals
+# pylint: disable=broad-except
 
 # Import the standard Python module.
 import math
