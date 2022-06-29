@@ -4,25 +4,22 @@
 The graphic output is optimised for a screen size of 1366x768 pixels. The
 constant WIN_HEIGHT controls the graphic output.
 
-The constant MULTIPLIER controls the amplitude of sine and cosine of the
+The constant AMPLITUDE controls the amplitude of sine and cosine of the
 applied wave.
 
 The user has to change the constant FN_IN to the image the filter should be
 applied. The filter then is applied to this image.
-
-For the functionality of the script, the Python modules opencv and numpy must
-be installed.
-
-The script was tested with JPEG and PNG images so far. The script was developed
-using Python3.
 '''
 # pylint: disable=invalid-name
 # pylint: disable=c-extension-no-member
 # pylint: disable=broad-except
 # pylint: disable=too-many-function-args
+# pylint: disable=too-many-locals
 
 # Import the standard Python module.
 import math
+import traceback
+import sys
 
 # Import the third party Python modules.
 import numpy as np
@@ -34,8 +31,27 @@ FN_IN = "image_in.jpg"
 # Set output filename.
 FN_OUT = "image_out.jpg"
 
-# Set multiplier.
-MULTIPLIER = 20.0
+# Set the constants in x-direction.
+AMPLITUDE_X = 0.0
+PERIODE_X = 0.0
+SHIFT_X = 0.0
+PHASE_X = 0.0
+
+# Set the constants in y-direction.
+AMPLITUDE_Y = 20.0
+PERIODE_Y = 1.0
+SHIFT_Y = 0.0
+PHASE_Y = 0.0
+
+# Set border size.
+BORDER_SIZE = 5
+
+# Set border color.
+BORDER_COLOR = [255, 0, 0]
+
+# Set output constants.
+CROP = True
+BORDER = True
 
 # Set window height.
 WIN_HEIGHT = 600
@@ -47,7 +63,7 @@ def ResizeWithAspectRatio(image, height=None, width=None, inter=cv2.INTER_AREA):
     '''Resize with aspect ration.'''
     # Initialse the variable dim.
     dim = None
-    # Return image, if no height and no width is given.
+    # If no height and no width is given return the image.
     if height is None and width is None:
         return image
     # Grab height and width of the image.
@@ -84,43 +100,83 @@ def show_image(image, title="output", xpos=50, ypos=50):
     # Destroy window.
     cv2.destroyAllWindows()
 
+# =====================
+# Function add_border()
+# =====================
+def add_border(image, bordersize, bordercolor):
+    '''Add border to image.'''
+    # Add border to image.
+    img = cv2.copyMakeBorder(image,
+                             top=bordersize, bottom=bordersize,
+                             left=bordersize, right=bordersize,
+                             borderType=cv2.BORDER_CONSTANT,
+                             value=bordercolor)
+    # Return the new image.
+    return img
+
+# =====================
+# Function deg_to_rad()
+# =====================
+def deg_to_rad(deg):
+    '''Convert degrees to radians.'''
+    # Convert degrees to radians.
+    rad = (deg / 180) * math.pi
+    # Return radians.
+    return rad
+
 # =======================
 # Function apply_filter()
 # =======================
-def apply_filter(img_input, multi):
+def apply_filter(img_input):
     '''Apply filter to image.'''
+    # Initialise border size.
+    bs = 0
     # Grab rows and cols of the image.
     rows, cols = img_input.shape[:2]
     # Create output image.
-    img_output = np.zeros(img_input.shape, dtype=img_input.dtype)
+    img_filter = np.zeros(img_input.shape, dtype=img_input.dtype)
     # Loop over rows and cols.
     for i in range(rows):
         for j in range(cols):
             # Calculate x and y radians.
-            alpha_x = 2 * math.pi * i / 180
-            alpha_y = 2 * math.pi * j / 180
+            alpha_x = deg_to_rad(i)
+            alpha_y = deg_to_rad(j)
+            # Calculate the sine values.
+            sin_x = AMPLITUDE_X * math.sin(PERIODE_X * (alpha_x + PHASE_X)) + SHIFT_X
+            sin_y = AMPLITUDE_Y * math.sin(PERIODE_Y * (alpha_y + PHASE_Y)) + SHIFT_Y
             # Calculate the offset values.
-            offset_x = int(multi * math.sin(alpha_x))
-            offset_y = int(multi * math.sin(alpha_y))
+            offset_x = int(sin_x)
+            offset_y = int(sin_y)
+            # Grab maximal value of offset.
+            bs = offset_x if offset_x > bs else bs
+            bs = offset_y if offset_y > bs else bs
             # Calculate new x and y values.
             new_x = (i+offset_y)%rows
             new_y = (j+offset_x)%cols
             # Create the output image.
-            img_output[i, j] = img_input[new_x, new_y]
+            img_filter[i, j] = img_input[new_x, new_y]
+    # Crop image.
+    if CROP:
+        img_output = img_filter[bs:rows-bs, bs:cols-bs]
+    elif not CROP:
+        img_output = img_filter
     # return output image.
     return img_output
 
 # ====================
 # Main script function
 # ====================
-def main(multi, fn_in, fn_out):
+def main(fn_in, fn_out):
     '''Main script function.'''
     # Try to apply the filter to the image.
     try:
         # Read image from file.
         img_input = cv2.imread(fn_in)
         # Apply filter.
-        img_output = apply_filter(img_input, multi)
+        img_output = apply_filter(img_input)
+        # Add border to image.
+        if BORDER:
+            img_output = add_border(img_output, BORDER_SIZE, BORDER_COLOR)
         # Display the image on the screen.
         show_image(img_output)
         # Write the image to the output file.
@@ -128,8 +184,10 @@ def main(multi, fn_in, fn_out):
     except Exception as err:
         # Print error message to screen.
         print("Unknown error:", str(err))
+        # Print traceback to screen.
+        traceback.print_exception(*sys.exc_info())
 
 # Execute script as program as well as module.
 if __name__ == "__main__":
     # Call main script function.
-    main(MULTIPLIER, FN_IN, FN_OUT)
+    main(FN_IN, FN_OUT)
